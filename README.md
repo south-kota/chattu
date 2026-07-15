@@ -40,6 +40,7 @@ There is no public documentation site yet; the repository documentation lives in
 
 - [Getting started](./docs/getting-started/quick-start.md)
 - [Architecture overview](./docs/architecture/overview.md)
+- [Next-session handoff](./docs/chattu/session-handoff.md)
 - [Chattu v0.0.1 baseline](./docs/chattu/v0.0.1-baseline.md)
 - [Provider guides](./docs/providers/codex.md)
 - [Operations](./docs/operations/ci.md)

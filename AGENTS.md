@@ -1,5 +1,17 @@
 # AGENTS.md
 
+## Chattu Fork Context
+
+This repository is Chattu, a local-first Markdown productivity and agentic workspace built on T3 Code.
+
+Before starting product work in a new session, read:
+
+- `docs/chattu/session-handoff.md`
+- `PLAN.md`
+- `docs/chattu/upstream-maintenance.md`
+
+The next product milestone is `v0.0.2`, the Chattu workspace shell. Treat `origin` as the Chattu repository and `upstream` as fetch-only; never push to `pingdotgg/t3code`.
+
 ## Task Completion Requirements
 
 - `vp check` and `vp run typecheck` must pass before considering tasks completed.
@@ -8,7 +20,7 @@
 
 ## Project Snapshot
 
-T3 Code is a minimal web GUI for using coding agents like Codex and Claude.
+Chattu is an early personal alpha that currently inherits T3 Code's web GUI for coding agents such as Codex and Claude. Chattu-specific architecture should remain bounded and upstream-compatible while the product expands into Markdown editing, structured productivity records, local indexing, sync, and integrations.
 
 This repository is a VERY EARLY WIP. Proposing sweeping changes that improve long-term maintainability is encouraged.
 
