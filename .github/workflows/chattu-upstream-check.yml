@@ -1,0 +1,33 @@
+name: Chattu Upstream Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Chattu
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Compare with T3 Code upstream
+        shell: bash
+        run: |
+          git remote add upstream https://github.com/pingdotgg/t3code.git 2>/dev/null || \
+            git remote set-url upstream https://github.com/pingdotgg/t3code.git
+          git fetch --no-tags upstream main
+          read -r ahead behind < <(git rev-list --left-right --count HEAD...upstream/main)
+          {
+            echo "## T3 Code upstream status"
+            echo
+            echo "- Chattu-only commits: ${ahead}"
+            echo "- Upstream commits not yet merged: ${behind}"
+            echo "- Upstream head: \`$(git rev-parse upstream/main)\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,15 @@
+{
+  "name": "Chattu",
+  "version": "0.0.1",
+  "repository": "https://github.com/south-kota/chattu",
+  "desktop": {
+    "bundleId": "com.chattu.desktop",
+    "dataDirectory": "chattu",
+    "homeDirectory": ".chattu"
+  },
+  "upstream": {
+    "repository": "https://github.com/pingdotgg/t3code.git",
+    "branch": "main",
+    "baselineCommit": "3513fa04fbf12c1d4fa2b8d07cfc7f0905714d31"
+  }
+}

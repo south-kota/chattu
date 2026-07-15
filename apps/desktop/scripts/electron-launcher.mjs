@@ -1,4 +1,4 @@
-// This file mostly exists because we want dev mode to say "T3 Code (Dev)" instead of "electron"
+// This file mostly exists because we want dev mode to use the product name instead of "electron".
 
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
@@ -6,6 +6,7 @@ import * as NodeModule from "node:module";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
+import chattuConfig from "../../../chattu.config.json" with { type: "json" };
 import { ensureElectronRuntime } from "./ensure-electron-runtime.mjs";
 
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -15,12 +16,14 @@ const repoRoot = NodePath.resolve(desktopDir, "..", "..");
 const devBundleIdSuffix = NodePath.basename(repoRoot)
   .toLowerCase()
   .replaceAll(/[^a-z0-9]+/g, "");
-export const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+export const APP_DISPLAY_NAME = isDevelopment
+  ? `${chattuConfig.name} (Dev)`
+  : `${chattuConfig.name} (Alpha)`;
 export const APP_BUNDLE_ID = isDevelopment
-  ? `com.t3tools.t3code.dev.${devBundleIdSuffix || "local"}`
-  : "com.t3tools.t3code";
+  ? `${chattuConfig.desktop.bundleId}.dev.${devBundleIdSuffix || "local"}`
+  : chattuConfig.desktop.bundleId;
 const APP_PROTOCOL_SCHEMES = isDevelopment ? ["t3code-dev"] : ["t3code"];
-const LAUNCHER_VERSION = 12;
+const LAUNCHER_VERSION = 13;
 const defaultIconPath = NodePath.join(desktopDir, "resources", "icon.icns");
 const developmentMacIconPngPath = NodePath.join(
   repoRoot,
@@ -96,16 +99,7 @@ function runChecked(command, args) {
   throw new Error(`Failed to run ${command} ${args.join(" ")}: ${details}`.trim());
 }
 
-function shellSingleQuote(value) {
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
-export function makeDevelopmentLauncherScript({
-  electronBinaryPath,
-  mainEntryPath,
-  desktopRoot,
-  environment,
-}) {
+export function makeDevelopmentBootstrapScript({ mainEntryPath, desktopRoot, environment }) {
   const envEntries = [
     ["VITE_DEV_SERVER_URL", environment.VITE_DEV_SERVER_URL],
     ["T3CODE_PORT", environment.T3CODE_PORT],
@@ -116,26 +110,43 @@ export function makeDevelopmentLauncherScript({
     ["T3CODE_DESKTOP_APP_USER_MODEL_ID", APP_BUNDLE_ID],
   ].filter((entry) => typeof entry[1] === "string" && entry[1].trim().length > 0);
   return [
-    "#!/bin/sh",
+    '"use strict";',
     ...envEntries.map(
       ([name, value]) =>
-        `if [ -z "\${${name}:-}" ]; then export ${name}=${shellSingleQuote(value)}; fi`,
+        `if (!process.env[${JSON.stringify(name)}]?.trim()) process.env[${JSON.stringify(name)}] = ${JSON.stringify(value)};`,
     ),
-    `exec ${shellSingleQuote(electronBinaryPath)} --t3code-dev-root=${shellSingleQuote(desktopRoot)} ${shellSingleQuote(mainEntryPath)} "$@"`,
+    `process.argv.push(${JSON.stringify(`--t3code-dev-root=${desktopRoot}`)});`,
+    `require(${JSON.stringify(mainEntryPath)});`,
     "",
   ].join("\n");
 }
 
-function writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath) {
+function writeDevelopmentBundleApplication(appBundlePath, electronBinaryPath) {
+  const resourcesAppDir = NodePath.join(appBundlePath, "Contents", "Resources", "app");
+  const targetBinaryPath = NodePath.join(appBundlePath, "Contents", "MacOS", "Electron");
+  NodeFS.mkdirSync(resourcesAppDir, { recursive: true });
   NodeFS.writeFileSync(
-    targetBinaryPath,
-    makeDevelopmentLauncherScript({
-      electronBinaryPath,
+    NodePath.join(resourcesAppDir, "main.cjs"),
+    makeDevelopmentBootstrapScript({
       mainEntryPath: NodePath.join(desktopDir, "dist-electron", "main.cjs"),
       desktopRoot: desktopDir,
       environment: process.env,
     }),
   );
+  NodeFS.writeFileSync(
+    NodePath.join(resourcesAppDir, "package.json"),
+    `${JSON.stringify(
+      {
+        name: "chattu-dev",
+        productName: APP_DISPLAY_NAME,
+        version: chattuConfig.version,
+        main: "main.cjs",
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  NodeFS.copyFileSync(electronBinaryPath, targetBinaryPath);
   NodeFS.chmodSync(targetBinaryPath, 0o755);
 }
 
@@ -303,10 +314,9 @@ function buildMacLauncher(electronBinaryPath) {
     JSON.stringify(currentMetadata) === JSON.stringify(expectedMetadata)
   ) {
     if (isDevelopment) {
-      // The launcher also handles protocol activations outside the dev runner,
-      // so refresh its fallback environment on every launch. Never let a value
-      // captured by an older parent app override the live dev-runner environment.
-      writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath);
+      // Protocol activations can happen outside the dev runner, so refresh the
+      // bootstrap's fallback environment on every launch.
+      writeDevelopmentBundleApplication(targetAppBundlePath, electronBinaryPath);
     }
     registerMacLauncherBundle(targetAppBundlePath);
     return targetBinaryPath;
@@ -324,7 +334,7 @@ function buildMacLauncher(electronBinaryPath) {
   patchMainBundleInfoPlist(targetAppBundlePath, iconPath);
   patchHelperBundleInfoPlists(targetAppBundlePath);
   if (isDevelopment) {
-    writeDevelopmentLauncherScript(targetBinaryPath, electronBinaryPath);
+    writeDevelopmentBundleApplication(targetAppBundlePath, electronBinaryPath);
   }
   NodeFS.writeFileSync(metadataPath, `${JSON.stringify(expectedMetadata, null, 2)}\n`);
   registerMacLauncherBundle(targetAppBundlePath);
